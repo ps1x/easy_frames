@@ -7,10 +7,10 @@ function easy_frames_enable() {
     module_load_include('inc', 'easy_frames', 'inc/common');
     $requirement = easy_frames_check_version(CROPPERJS_VERSION);
     //print_r($requirement);die;
-    if ($requirement['cropperjs']['severity'] == REQUIREMENT_OK) {
-        drupal_set_message($requirement['cropperjs']['description']);
+    if ($requirement['cropper']['severity'] == REQUIREMENT_OK) {
+        drupal_set_message($requirement['cropper']['title']);
     } else {
         module_disable(array('easy_frames'));
-        drupal_set_message($requirement['cropperjs']['description'],'error');
+        drupal_set_message($requirement['cropper']['description'],'error');
     }
 }

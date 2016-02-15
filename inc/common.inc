@@ -7,33 +7,33 @@
  */
 function easy_frames_check_version($version){
     $t = get_t();
-    $library = libraries_detect('cropperjs');
+    $library = libraries_detect('cropper');
 
     if (empty($library['installed'])) {
-        $requirements['cropperjs'] = array(
+        $requirements['cropper'] = array(
             'title' => $t('Cropper js library'),
             'value' => $t('At least @a', array('@a' => $version)),
             'severity' => REQUIREMENT_ERROR,
             'description' =>
-                $t('You need to download the !cropper, extract archive in /sites/all/libraries folder so there will be path like /sites/all/libraries/cropperjs/dist/cropper.min.js.',
+                $t('You need to download the !cropper, extract archive in /sites/all/libraries folder so there will be path like /sites/all/libraries/cropper/dist/cropper.min.js.',
                     array(
                         '!cropper' => l($t('Cropper plugin'), $library['download url']),
                         '%path' => 'sites/all/libraries',
                         '@js_file' => 'cropper.min.js',
-                        '@css_file' => 'cropper.css',
+                        '@css_file' => 'cropper.min.css',
                     )
                 ),
         );
     }
     elseif (version_compare($library['version'], $version, '>=')) {
-        $requirements['cropperjs'] = array(
+        $requirements['cropper'] = array(
             'title' => $t('Cropper js library found and installed correctly.'),
             'severity' => REQUIREMENT_OK,
             'value' => $library['version'],
         );
     }
     else {
-        $requirements['cropperjs'] = array(
+        $requirements['cropper'] = array(
             'title' => $t('Cropper js library'),
             'value' => $t('At least @a', array('@a' => $version)),
             'severity' => REQUIREMENT_ERROR,

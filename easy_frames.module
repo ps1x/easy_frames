@@ -5,13 +5,13 @@ const CROPPERJS_VERSION = '0.5.5';
  * Implements hook_libraries_info().
  */
 function easy_frames_libraries_info() {
-    $libraries['cropperjs'] = array(
-        'name' => 'Cropper js',
+    $libraries['cropper'] = array(
+        'name' => 'Cropper library',
         'vendor url' => 'http://fengyuanchen.github.io/cropper/',
         'download url' => 'https://github.com/fengyuanchen/cropperjs',
         'version arguments' => array(
             'file' => 'dist/cropper.min.js',
-            'pattern' => '/Cropper.js v(\d+\.+\d.+\d+)/',
+            'pattern' => '/Cropper v(\d+\.+\d.+\d+)/',
             'lines' => 5,
         ),
         'files' => array(
@@ -59,49 +59,47 @@ function easy_frames_image_effect_info() {
 }
 
 function easy_frames_frame_form($action) {
-    $defaults = array(
-        'alpha' => '100',
-        'path' => '',
-        'under' => FALSE,
-        'scale9' => array(
-            'left' => '',
-            'top' => '',
-            'right' => '',
-            'bottom' => '',
-        ),
-        'exact' => array(
-            'width' => '',
-            'height' => '',
-            'xpos' => '',
-            'ypos' => '',
-        ),
-        'relative' => array(
-            'leftdiff' => '',
-            'rightdiff' => '',
-            'topdiff' => '',
-            'bottomdiff' => '',
-        ),
-    );
-    $action = array_merge($defaults, (array) $action);
+    libraries_load('cropper');
+    drupal_add_js(drupal_get_path('module', 'easy_frames') . '/js/main.js');
 
     $form = array();
 
     $form['frame_image'] = array(
         '#type' => 'managed_file',
         '#name' => 'frame_file',
-        '#prefix' => '<h1>LOL</h1>',
         '#title' => t('Frame image'),
         '#size' => 40,
-        '#description' => t("Image should be less than 400 pixels wide and in JPG format."),
+        '#description' => t("After uploading image, select internal empty space of the frame."),
         '#upload_location' => 'public://',
         '#theme' => 'easy_frames_frame_upload',
-
     );
 
-    $form['#submit'][] = 'imagecache_scale9actions_overlay_form_submit';
+    $form['frame_x'] = array(
+        '#title' =>  t('frame_x'),
+        '#default_value' => '',
+        '#type' => 'hidden',
+    );
+    $form['frame_y'] = array(
+        '#title' =>  t('frame_y'),
+        '#default_value' => '',
+        '#type' => 'hidden',
+    );
+    $form['frame_width'] = array(
+        '#title' =>  t('frame_width'),
+        '#default_value' => '',
+        '#type' => 'hidden',
+    );
+    $form['frame_height'] = array(
+        '#title' =>  t('frame_height'),
+        '##default_value' => '',
+        '#type' => 'hidden',
+    );
+
+    $form['#submit'][] = 'easy_frame_submit_callback';
 
     return $form;
 }
+
 
 /**
  * Implements theme_mymodule_thumb_upload theme callback.
@@ -109,12 +107,13 @@ function easy_frames_frame_form($action) {
 function theme_easy_frames_frame_upload($variables) {
     $element = $variables['element'];
 
-    $output = '<div class="image-widget form-managed-file clearfix">';
+    $output = '<div class="image-widget form-managed-file clearfix easy-frames-frame-image">';
 
     if ($element['fid']['#value'] != 0) {
-        $output .= '<div class="image-preview">';
+        $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;">';
         $output .= theme('image_style', array('style_name' => 'large', 'path' => 'public://'.$element['#file']->filename, 'getsize' => FALSE));
         $output .= '</div>';
+        $output .= '<script type="text/javascript">enable_cropper();</script>'; //TODO: More elegant way to attach to file uploaded event needed
     }
 
     $output .= '<div class="image-widget-data">';
@@ -143,3 +142,174 @@ function easy_frames_theme() {
         )
     );
 }
+
+function easy_frames_frame_effect(&$image, $action = array()) {
+    module_load_include('inc', 'imagecache_actions', 'image_overlay');
+    //C:\WWW\domains\www\sites\all\modules\imagecache_actions\image_overlay.inc
+    $file_uri = file_load($action['frame_image'])->uri;
+    $frame_info = image_get_info($file_uri);
+    $overlay = image_load($file_uri);
+    print_r($action);
+    print_r($overlay);
+    print_r($image);
+//die;
+
+    $xpos = 0;
+    $ypos = 0;
+    $width = 0;
+    $height = 0;
+
+    if (!frame_resize($overlay, $image->info['width'], $image->info['height'], round($action['frame_x']),
+        round($action['frame_y']), $overlay->info['width'] - round($action['frame_width']), $overlay->info['height'] - round($action['frame_height']))
+    ) {
+        return FALSE;
+    } else {
+        echo "success";
+    }
+
+    return image_overlay($image, $overlay, 0, 0);
+}
+
+function frame_resize(&$image, $width, $height, $left = NULL,
+                                               $top = NULL, $right = NULL, $bottom = NULL
+) {
+    $left = $left ? $left : 0;
+    $top = $top ? $top : 0;
+    $right = $right ? $right : $image->info['width'];
+    $bottom = $bottom ? $bottom : $image->info['height'];
+
+
+    $res = image_gd_create_tmp($image,$width,$height);
+
+    // top-left
+    if ($top > 0 && $left > 0 && !imagecopy($res, $image->resource, 0, 0, 0, 0, $left, $top)) {
+        return FALSE;
+    }
+
+
+
+    // left
+    if ($left > 0 && !imagecopyresampled($res, $image->resource,
+            0,
+            $top,
+            0,
+            $top,
+            $left,
+            $height - $bottom - $top,
+            $left,
+            $image->info['height'] - $bottom - $top
+        )
+    ) {
+        return FALSE;
+    }
+
+    // top
+    if ($top > 0 && !imagecopyresampled($res, $image->resource,
+            $left,
+            0,
+            $left,
+            0,
+            $width - $right - $left,
+            $top,
+            $image->info['width'] - $right - $left,
+            $top
+        )
+    ) {
+        return FALSE;
+    }
+
+    // bottom-left
+    if ($bottom < $image->info['height'] && $left > 0 && !imagecopy($res, $image->resource,
+            0,
+            $height - $bottom,
+            0,
+            $image->info['height'] - $bottom,
+            $left,
+            $image->info['height'] - $bottom
+        )
+    ) {
+        return FALSE;
+    }
+
+    // bottom
+    if ($bottom < $image->info['height'] && !imagecopyresampled($res, $image->resource,
+            $left,
+            $height - $bottom,
+            $left,
+            $image->info['height'] - $bottom,
+            $width - $right - $left,
+            $bottom,
+            $image->info['width'] - $right - $left,
+            $bottom
+        )
+    ) {
+        return FALSE;
+    }
+
+    // bottom-right
+    if ($bottom < $image->info['height'] && $right < $image->info['width'] &&
+        !imagecopy($res, $image->resource,
+            $width - $right,
+            $height - $bottom,
+            $image->info['width'] - $right,
+            $image->info['height'] - $bottom,
+            $image->info['width'] - $right,
+            $image->info['height'] - $bottom
+        )
+    ) {
+        return FALSE;
+    }
+
+    // right
+    if ($right < $image->info['width'] && !imagecopyresampled($res, $image->resource,
+            $width - $right,
+            $top,
+            $image->info['width'] - $right,
+            $top,
+            $right,
+            $height - $bottom - $top,
+            $right,
+            $image->info['height'] - $bottom - $top
+        )
+    ) {
+        return FALSE;
+    }
+
+    // top-right
+    if ($top > 0 && $right < $image->info['width'] && !imagecopy($res, $image->resource,
+            $width - $right,
+            0,
+            $image->info['width'] - $right,
+            0,
+            $width - $right,
+            $top
+        )
+    ) {
+        return FALSE;
+    }
+
+    // center
+    if (!imagecopyresampled($res, $image->resource,
+        $left,
+        $top,
+        $left,
+        $top,
+        $width - $right - $left,
+        $height  - $bottom - $top,
+        $image->info['width'] - $right - $left,
+        $image->info['height'] - $bottom - $top
+    )
+    ) {
+        return FALSE;
+    }
+
+    imagedestroy($image->resource);
+
+    // Update image object.
+    $image->resource = $res;
+    $image->info['width'] = $width;
+    $image->info['height'] = $height;
+
+    return TRUE;
+}
+
