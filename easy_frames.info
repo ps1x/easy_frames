@@ -1,0 +1,5 @@
+name = Easy Frames
+description = Super easy imagecache action to create photo frames
+core = 7.x
+files[] = easy_frames.module
+files[] = inc/common.inc

@@ -1,0 +1,145 @@
+<?php
+const CROPPERJS_VERSION = '0.5.5';
+
+/**
+ * Implements hook_libraries_info().
+ */
+function easy_frames_libraries_info() {
+    $libraries['cropperjs'] = array(
+        'name' => 'Cropper js',
+        'vendor url' => 'http://fengyuanchen.github.io/cropper/',
+        'download url' => 'https://github.com/fengyuanchen/cropperjs',
+        'version arguments' => array(
+            'file' => 'dist/cropper.min.js',
+            'pattern' => '/Cropper.js v(\d+\.+\d.+\d+)/',
+            'lines' => 5,
+        ),
+        'files' => array(
+            'js' => array(
+                'dist/cropper.min.js',
+            ),
+            'css' => array(
+                'dist/cropper.min.css'
+            ),
+        ),
+    );
+
+    return $libraries;
+}
+
+
+/**
+ * Implements hook_requirements().
+ */
+function easy_frames_requirements($phase) {
+    module_load_include('inc', 'easy_frames', 'inc/common');
+    $requirements = array();
+
+    if ($phase == 'runtime') {
+        $requirements = easy_frames_check_version(CROPPERJS_VERSION);
+    }
+
+    return $requirements;
+}
+
+/**
+ * Implements hook_imagecache_actions().
+ */
+function easy_frames_image_effect_info() {
+    $effects = array();
+    $effects['easy_frames_frame'] = array(
+        'label' => t('Easy frame'),
+        'help' => t('Dead simple yet beautifull frame'),
+        'effect callback' => 'easy_frames_frame_effect',
+        'dimensions passthrough' => TRUE,
+        'form callback' => 'easy_frames_frame_form',
+        'summary theme' => 'easy_frames_frame_summary',
+    );
+    return $effects;
+}
+
+function easy_frames_frame_form($action) {
+    $defaults = array(
+        'alpha' => '100',
+        'path' => '',
+        'under' => FALSE,
+        'scale9' => array(
+            'left' => '',
+            'top' => '',
+            'right' => '',
+            'bottom' => '',
+        ),
+        'exact' => array(
+            'width' => '',
+            'height' => '',
+            'xpos' => '',
+            'ypos' => '',
+        ),
+        'relative' => array(
+            'leftdiff' => '',
+            'rightdiff' => '',
+            'topdiff' => '',
+            'bottomdiff' => '',
+        ),
+    );
+    $action = array_merge($defaults, (array) $action);
+
+    $form = array();
+
+    $form['frame_image'] = array(
+        '#type' => 'managed_file',
+        '#name' => 'frame_file',
+        '#prefix' => '<h1>LOL</h1>',
+        '#title' => t('Frame image'),
+        '#size' => 40,
+        '#description' => t("Image should be less than 400 pixels wide and in JPG format."),
+        '#upload_location' => 'public://',
+        '#theme' => 'easy_frames_frame_upload',
+
+    );
+
+    $form['#submit'][] = 'imagecache_scale9actions_overlay_form_submit';
+
+    return $form;
+}
+
+/**
+ * Implements theme_mymodule_thumb_upload theme callback.
+ */
+function theme_easy_frames_frame_upload($variables) {
+    $element = $variables['element'];
+
+    $output = '<div class="image-widget form-managed-file clearfix">';
+
+    if ($element['fid']['#value'] != 0) {
+        $output .= '<div class="image-preview">';
+        $output .= theme('image_style', array('style_name' => 'large', 'path' => 'public://'.$element['#file']->filename, 'getsize' => FALSE));
+        $output .= '</div>';
+    }
+
+    $output .= '<div class="image-widget-data">';
+
+    if ($element['fid']['#value'] != 0) {
+        $element['filename']['#markup'] .= ' <span class="file-size">(' . format_size($element['#file']->filesize) . ')</span> ';
+    }
+
+    $output .= drupal_render_children($element);
+
+    $output .= '</div>';
+    $output .= '</div>';
+
+    return $output;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function easy_frames_theme() {
+
+    return array(
+        'easy_frames_frame_upload' => array(
+            'render element' => 'element',
+            'file'           => 'easy_frames.module',
+        )
+    );
+}
