@@ -111,7 +111,7 @@ function theme_easy_frames_frame_upload($variables) {
 
     if ($element['fid']['#value'] != 0) {
         $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;">';
-        $output .= theme('image_style', array('style_name' => 'large', 'path' => 'public://'.$element['#file']->filename, 'getsize' => FALSE));
+        $output .= theme('image', array('path' => 'public://'.$element['#file']->filename));
         $output .= '</div>';
         $output .= '<script type="text/javascript">enable_cropper();</script>'; //TODO: More elegant way to attach to file uploaded event needed
     }
@@ -149,10 +149,10 @@ function easy_frames_frame_effect(&$image, $action = array()) {
     $file_uri = file_load($action['frame_image'])->uri;
     $frame_info = image_get_info($file_uri);
     $overlay = image_load($file_uri);
-    print_r($action);
-    print_r($overlay);
-    print_r($image);
-//die;
+    print_r(array('ACTION_SETTINGS' => $action));
+    print_r(array('FRAME_IMAGE' => $overlay));
+    print_r(array('ORIGINAL_IMAGE' => $image));
+
 
     $xpos = 0;
     $ypos = 0;
