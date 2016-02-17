@@ -48,8 +48,8 @@ function easy_frames_requirements($phase) {
 function easy_frames_image_effect_info() {
     $effects = array();
     $effects['easy_frames_frame'] = array(
-        'label' => t('Easy frame'),
-        'help' => t('Dead simple yet beautifull frame'),
+        'label' => t('Easy frames'),
+        'help' => t('Upload frame image, then use crop tool to select internal <em>transparent</em> square of frame.'),
         'effect callback' => 'easy_frames_frame_effect',
         'dimensions passthrough' => TRUE,
         'form callback' => 'easy_frames_frame_form',
@@ -63,6 +63,7 @@ function easy_frames_frame_form($action) {
     drupal_add_js(drupal_get_path('module', 'easy_frames') . '/js/main.js');
 
     $form = array();
+    dpm($action);
 
     $form['frame_image'] = array(
         '#type' => 'managed_file',
@@ -71,27 +72,35 @@ function easy_frames_frame_form($action) {
         '#size' => 40,
         '#description' => t("After uploading image, select internal empty space of the frame."),
         '#upload_location' => 'public://',
+        '#default_value' => (isset($action['frame_image']) && $action['frame_image']) ? $action['frame_image'] : '',
         '#theme' => 'easy_frames_frame_upload',
+    );
+
+    $form['downscale_image'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Downscale image'),
+        '#description' => t('By default image will be fitted inside frame, if not checked frame will be drawn outside of image, making it bigger'),
+        '#default_value' => (isset($action['downscale_image'])) ? $action['downscale_image'] : 1,
     );
 
     $form['frame_x'] = array(
         '#title' =>  t('frame_x'),
-        '#default_value' => '',
+        '#default_value' => (isset($action['frame_x']) && $action['frame_x']) ? $action['frame_x'] : '',
         '#type' => 'hidden',
     );
     $form['frame_y'] = array(
         '#title' =>  t('frame_y'),
-        '#default_value' => '',
+        '#default_value' => (isset($action['frame_y']) && $action['frame_y']) ? $action['frame_y'] : '',
         '#type' => 'hidden',
     );
     $form['frame_width'] = array(
         '#title' =>  t('frame_width'),
-        '#default_value' => '',
+        '#default_value' => (isset($action['frame_width']) && $action['frame_width']) ? $action['frame_width'] : '',
         '#type' => 'hidden',
     );
     $form['frame_height'] = array(
         '#title' =>  t('frame_height'),
-        '##default_value' => '',
+        '#default_value' => (isset($action['frame_height']) && $action['frame_height']) ? $action['frame_height'] : '',
         '#type' => 'hidden',
     );
 
@@ -110,10 +119,10 @@ function theme_easy_frames_frame_upload($variables) {
     $output = '<div class="image-widget form-managed-file clearfix easy-frames-frame-image">';
 
     if ($element['fid']['#value'] != 0) {
-        $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;">';
+        $output .= '<script type="text/javascript">jQuery.fn.enable_cropper();</script>'; //TODO: More elegant way to attach to file uploaded event needed
+        $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;" data-test="">';
         $output .= theme('image', array('path' => 'public://'.$element['#file']->filename));
         $output .= '</div>';
-        $output .= '<script type="text/javascript">enable_cropper();</script>'; //TODO: More elegant way to attach to file uploaded event needed
     }
 
     $output .= '<div class="image-widget-data">';
@@ -145,19 +154,9 @@ function easy_frames_theme() {
 
 function easy_frames_frame_effect(&$image, $action = array()) {
     module_load_include('inc', 'imagecache_actions', 'image_overlay');
-    //C:\WWW\domains\www\sites\all\modules\imagecache_actions\image_overlay.inc
+
     $file_uri = file_load($action['frame_image'])->uri;
-    $frame_info = image_get_info($file_uri);
     $overlay = image_load($file_uri);
-    print_r(array('ACTION_SETTINGS' => $action));
-    print_r(array('FRAME_IMAGE' => $overlay));
-    print_r(array('ORIGINAL_IMAGE' => $image));
-
-
-    $xpos = 0;
-    $ypos = 0;
-    $width = 0;
-    $height = 0;
 
     if (!frame_resize($overlay, $image->info['width'], $image->info['height'], round($action['frame_x']),
         round($action['frame_y']), $overlay->info['width'] - round($action['frame_width']), $overlay->info['height'] - round($action['frame_height']))
