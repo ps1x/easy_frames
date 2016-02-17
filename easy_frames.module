@@ -157,12 +157,14 @@ function easy_frames_frame_effect(&$image, $action = array()) {
 
     $file_uri = file_load($action['frame_image'])->uri;
     $overlay = image_load($file_uri);
+    //min($image->info['width'],$image->info['height'],)
 
     if (!frame_resize($overlay, $image->info['width'], $image->info['height'], round($action['frame_x']),
-        round($action['frame_y']), $overlay->info['width'] - round($action['frame_width']), $overlay->info['height'] - round($action['frame_height']))
+        round($action['frame_y']), $overlay->info['width'] - round($action['frame_width']) - round($action['frame_x']), $overlay->info['height'] - round($action['frame_height']) - round($action['frame_y']))
     ) {
         return FALSE;
     } else {
+        canvasactions_definecanvas_effect()
         echo "success";
     }
 

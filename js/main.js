@@ -23,6 +23,10 @@
                     frame_y.val(e.y);
                     frame_width.val(e.width);
                     frame_height.val(e.height);
+                    console.log(e.x);
+                    console.log(e.y);
+                    console.log(e.width);
+                    console.log(e.height);
                 },
                 built: function(e) {
                     if (data) {
