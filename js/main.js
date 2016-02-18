@@ -3,41 +3,40 @@
         setTimeout(function(){ //TODO: get rid of setTimeout function and use events if possible
             var container = $('#image-effect-form'),
                 image = container.find('.image-preview img'),
-                frame_x = container.find('input[name="data[frame_x]"]'),
-                frame_y = container.find('input[name="data[frame_y]"]'),
-                frame_width = container.find('input[name="data[frame_width]"]'),
-                frame_height = container.find('input[name="data[frame_height]"]');
-
-            if(frame_x.val() && frame_y.val() && frame_width.val() && frame_height.val()) {
+                frame_left = container.find('input[name="data[frame_left]"]'),
+                frame_top = container.find('input[name="data[frame_top]"]'),
+                frame_right = container.find('input[name="data[frame_right]"]'),
+                frame_bottom = container.find('input[name="data[frame_bottom]"]');
+            if(frame_left.val() && frame_top.val() && frame_right.val() && frame_bottom.val()) {
                 var data = {
-                    left: parseFloat(frame_x.val()),
-                    top: parseFloat(frame_y.val()),
-                    width: parseFloat(frame_width.val()),
-                    height: parseFloat(frame_height.val())
+                    left: parseFloat(frame_left.val()),
+                    top: parseFloat(frame_top.val()),
+                    width: parseFloat(frame_right.val()),
+                    height: parseFloat(frame_bottom.val())
                 };
+                console.log(data);
             }
             image.cropper({
                 zoomable: false,
                 crop: function(e) {
-                    frame_x.val(e.x);
-                    frame_y.val(e.y);
-                    frame_width.val(e.width);
-                    frame_height.val(e.height);
-                    console.log(e.x);
-                    console.log(e.y);
-                    console.log(e.width);
-                    console.log(e.height);
+                    var imageData = image.cropper('getImageData');
+                    if (e.x && e.y && e.width && e.height) {
+                        frame_left.val(e.x);
+                        frame_top.val(e.y);
+                        frame_right.val(imageData.naturalWidth - e.width - e.x);
+                        frame_bottom.val(imageData.naturalHeight - e.height - e.y);
+                    }
                 },
                 built: function(e) {
                     if (data) {
-                        canvasData = image.cropper('getCanvasData');
-                        var scaleFactor = canvasData.width / canvasData.naturalWidth;
-                        data.top = data.top * scaleFactor;
-                        data.left = data.left * scaleFactor;
-                        data.width = data.width * scaleFactor;
-                        data.height = data.height * scaleFactor;
-                        data.top = data.top + image.cropper('getCanvasData').top;
-                        data.left = data.left + image.cropper('getCanvasData').left;
+                        var canvasData = image.cropper('getCanvasData'),
+                            imageData = image.cropper('getImageData'),
+                            scaleFactor = canvasData.width / canvasData.naturalWidth;
+                        data.width = imageData.width - (data.width + data.left) * scaleFactor; // TODO: fix bug when saving settings without moving crop frame
+                        data.height = imageData.height - (data.height + data.top) * scaleFactor;
+                        data.top = data.top * scaleFactor + image.cropper('getCanvasData').top;
+                        data.left = data.left * scaleFactor + image.cropper('getCanvasData').left;
+                        console.log(data);
                         image.cropper('setCropBoxData', data);
                     }
                 }
