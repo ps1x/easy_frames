@@ -63,7 +63,6 @@ function easy_frames_frame_form($action) {
     drupal_add_js(drupal_get_path('module', 'easy_frames') . '/js/main.js');
 
     $form = array();
-    dpm($action);
 
     $form['frame_image'] = array(
         '#type' => 'managed_file',
@@ -123,6 +122,7 @@ function easy_frames_frame_form($action) {
  * Implements theme_mymodule_thumb_upload theme callback.
  */
 function theme_easy_frames_frame_upload($variables) {
+    dpm(image_styles());
     $element = $variables['element'];
 
     $output = '<div class="image-widget form-managed-file clearfix easy-frames-frame-image">';
@@ -162,47 +162,59 @@ function easy_frames_theme() {
 }
 
 function easy_frames_frame_effect(&$image, $action = array()) {
-    $frame_thickness = $action['frame_thickness'] / 100;
-    $left = round($action['frame_left']);
-    $top = round($action['frame_top']);
-    $right = round($action['frame_right']);
-    $bottom = round($action['frame_bottom']);
-    $scale_factor = 1;
-    module_load_include('inc', 'imagecache_actions', 'image_overlay');
-
-    $file_uri = file_load($action['frame_image'])->uri;
-    $overlay = image_load($file_uri);
-
-    dpm($overlay);
-
-    if ($overlay->info['width'] > $image->info['width'] || $overlay->info['height'] < $image->info['height']) {
-        if ($overlay->info['width']/$image->info['width'] < $overlay->info['height']/$image->info['height']) {
-            $scale_factor = $overlay->info['width'] / $image->info['width'] / $frame_thickness;
-            image_scale($overlay, round($image->info['width'] * $frame_thickness), null, TRUE);
-        } else {
-            $scale_factor = $overlay->info['height'] / $image->info['height'];
-            image_scale($overlay, null, round($image->info['height'] * $frame_thickness), TRUE);
+    if (!isset($image->already[0])) { //TODO: very hacky code to run preset only once, can we get rid of it?
+        $image->already[] = "dummy";
+        $image_styles = image_styles();
+        $dice = array();
+        foreach ($image_styles['test']['effects'] as $effect_id => $style) {
+            if ($style['name'] == 'easy_frames_frame') {
+                $dice[] = $effect_id;
+                $image_styles['test']['effects'][$effect_id]['data']['force_run'] = false;
+            }
         }
+        $random_effect = $dice[array_rand($dice)];
+        $image_styles['test']['effects'][$random_effect]['data']['force_run'] = true;
+        image_effect_apply($image, $image_styles['test']['effects'][$random_effect]);
+    } else if (isset($action['force_run']) && $action['force_run'] == true) {
+        $frame_thickness = $action['frame_thickness'] / 100;
+        $left = round($action['frame_left']);
+        $top = round($action['frame_top']);
+        $right = round($action['frame_right']);
+        $bottom = round($action['frame_bottom']);
+        $scale_factor = 1;
+        module_load_include('inc', 'imagecache_actions', 'image_overlay');
+
+        $file_uri = file_load($action['frame_image'])->uri;
+        $overlay = image_load($file_uri);
+
+        if ($overlay->info['width'] > $image->info['width'] || $overlay->info['height'] < $image->info['height']) {
+            if ($overlay->info['width']/$image->info['width'] < $overlay->info['height']/$image->info['height']) {
+                $scale_factor = $overlay->info['width'] / $image->info['width'] / $frame_thickness;
+                image_scale($overlay, round($image->info['width'] * $frame_thickness), null, TRUE);
+            } else {
+                $scale_factor = $overlay->info['height'] / $image->info['height'];
+                image_scale($overlay, null, round($image->info['height'] * $frame_thickness), TRUE);
+            }
+        }
+
+        if (!frame_resize($overlay,
+            $image->info['width'],
+            $image->info['height'],
+            round($left/$scale_factor),
+            round($top/$scale_factor),
+            round($right/$scale_factor),
+            round($bottom/$scale_factor)
+        )
+        ) {
+            return FALSE;
+        } else {
+            echo "success";
+        }
+
+        return image_overlay($image, $overlay, 0, 0);
     }
 
-    dpm ($overlay);
-    dpm ('scale '.$scale_factor);
-
-    if (!frame_resize($overlay,
-        $image->info['width'],
-        $image->info['height'],
-        round($left/$scale_factor),
-        round($top/$scale_factor),
-        round($right/$scale_factor),
-        round($bottom/$scale_factor)
-    )
-    ) {
-        return FALSE;
-    } else {
-        echo "success";
-    }
-
-    return image_overlay($image, $overlay, 0, 0);
+    return $image;
 }
 
 function frame_resize(&$image, $width, $height, $left = NULL,
