@@ -111,6 +111,11 @@ function easy_frames_frame_form($action) {
         '#default_value' => (isset($action['frame_bottom']) && $action['frame_bottom']) ? $action['frame_bottom'] : '',
         '#type' => 'hidden',
     );
+    $form['style_name'] = array(
+        '#title' =>  t('style_name'),
+        '#value' => arg(5),
+        '#type' => 'hidden',
+    );
 
     $form['#submit'][] = 'easy_frame_submit_callback';
 
@@ -122,14 +127,13 @@ function easy_frames_frame_form($action) {
  * Implements theme_mymodule_thumb_upload theme callback.
  */
 function theme_easy_frames_frame_upload($variables) {
-    dpm(image_styles());
     $element = $variables['element'];
 
     $output = '<div class="image-widget form-managed-file clearfix easy-frames-frame-image">';
 
     if ($element['fid']['#value'] != 0) {
         $output .= '<script type="text/javascript">jQuery.fn.enable_cropper();</script>'; //TODO: More elegant way to attach to file uploaded event needed
-        $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;" data-test="">';
+        $output .= '<div class="image-preview" style="max-width:960px; width: auto; height:auto;">';
         $output .= theme('image', array('path' => 'public://'.$element['#file']->filename));
         $output .= '</div>';
     }
@@ -162,19 +166,20 @@ function easy_frames_theme() {
 }
 
 function easy_frames_frame_effect(&$image, $action = array()) {
+    $tolerance = 10;
     if (!isset($image->already[0])) { //TODO: very hacky code to run preset only once, can we get rid of it?
         $image->already[] = "dummy";
         $image_styles = image_styles();
         $dice = array();
-        foreach ($image_styles['test']['effects'] as $effect_id => $style) {
+        foreach ($image_styles[$action['style_name']]['effects'] as $effect_id => $style) {
             if ($style['name'] == 'easy_frames_frame') {
                 $dice[] = $effect_id;
-                $image_styles['test']['effects'][$effect_id]['data']['force_run'] = false;
+                $image_styles[$action['style_name']]['effects'][$effect_id]['data']['force_run'] = false;
             }
         }
         $random_effect = $dice[array_rand($dice)];
-        $image_styles['test']['effects'][$random_effect]['data']['force_run'] = true;
-        image_effect_apply($image, $image_styles['test']['effects'][$random_effect]);
+        $image_styles[$action['style_name']]['effects'][$random_effect]['data']['force_run'] = true;
+        image_effect_apply($image, $image_styles[$action['style_name']]['effects'][$random_effect]);
     } else if (isset($action['force_run']) && $action['force_run'] == true) {
         $frame_thickness = $action['frame_thickness'] / 100;
         $left = round($action['frame_left']);
@@ -183,6 +188,7 @@ function easy_frames_frame_effect(&$image, $action = array()) {
         $bottom = round($action['frame_bottom']);
         $scale_factor = 1;
         module_load_include('inc', 'imagecache_actions', 'image_overlay');
+        module_load_include('inc', 'imagecache_actions', 'canvasactions/canvasactions');
 
         $file_uri = file_load($action['frame_image'])->uri;
         $overlay = image_load($file_uri);
@@ -196,6 +202,19 @@ function easy_frames_frame_effect(&$image, $action = array()) {
                 image_scale($overlay, null, round($image->info['height'] * $frame_thickness), TRUE);
             }
         }
+
+        $data = array(
+            'relative' => array(
+                'leftdiff' => $left/$scale_factor - $tolerance,
+                'rightdiff' => $right/$scale_factor - $tolerance,
+                'topdiff' => $top/$scale_factor - $tolerance,
+                'bottomdiff' => $bottom/$scale_factor - $tolerance
+            )
+        );
+        $data['RGB']['HEX'] = '#ffffff';
+        $data['under'] = true;
+        $data['exact']['width'] = $data['exact']['height'] = $data['exact']['xpos'] = $data['exact']['ypos'] = '';
+        canvasactions_definecanvas_effect($image, $data);
 
         if (!frame_resize($overlay,
             $image->info['width'],
