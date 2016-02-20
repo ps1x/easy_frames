@@ -1,5 +1,5 @@
 <?php
-const CROPPERJS_VERSION = '2.5.5';
+const CROPPERJS_VERSION = '2.2.5';
 
 /**
  * Implements hook_libraries_info().
@@ -118,7 +118,7 @@ function easy_frames_frame_form($action) {
     );
     $form['style_name'] = array(
         '#title' =>  t('style_name'),
-        '#value' => arg(5),
+        '#default_value' => arg(5),
         '#type' => 'hidden',
     );
 
@@ -208,7 +208,16 @@ function easy_frames_frame_effect(&$image, $action = array()) {
         module_load_include('inc', 'imagecache_actions', 'image_overlay');
         module_load_include('inc', 'imagecache_actions', 'canvasactions/canvasactions');
 
-        $file_uri = file_load($action['frame_image'])->uri;
+        $file = file_load($action['frame_image']);
+        if ($file) {
+            $file_uri = $file->uri;
+            $file->status = FILE_STATUS_PERMANENT;
+            file_save($file);
+        } else {
+            return $image;
+        }
+
+
         $overlay = image_load($file_uri);
 
         /**
