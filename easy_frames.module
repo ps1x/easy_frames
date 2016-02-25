@@ -48,7 +48,7 @@ function easy_frames_requirements($phase) {
 function easy_frames_image_effect_info() {
     $effects = array();
     $effects['easy_frames_frame'] = array(
-        'label' => t('Easy frames'),
+        'label' => t('Easy frame'),
         'help' => t('Upload frame image, then use crop tool to select internal <em>transparent</em> square of frame.'),
         'effect callback' => 'easy_frames_frame_effect',
         'dimensions passthrough' => TRUE,
@@ -94,6 +94,15 @@ function easy_frames_frame_form($action) {
         '#title' => t('Downscale image'),
         '#description' => t('By default image will be fitted inside frame, if not checked frame will be drawn outside of image, making it bigger'),
         '#default_value' => (isset($action['downscale_image'])) ? $action['downscale_image'] : 1,
+    );
+
+    $form['downscale_tolerance'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Downscale tolerance'),
+        '#default_value' => (isset($action['downscale_tolerance']) && $action['downscale_tolerance']) ? $action['downscale_tolerance'] : '10',
+        '#size' => 3,
+        '#field_suffix' => 'px',
+        '#description' => t('Enter image scale tolerance, this value represents actual image size will be bigger then crop area in frame.'),
     );
 
     $form['frame_left'] = array(
@@ -177,7 +186,6 @@ function easy_frames_theme() {
  * @return bool
  */
 function easy_frames_frame_effect(&$image, $action = array()) {
-    $tolerance = 10;
     /**
      * Running only one effect of all in current style
      */
@@ -199,6 +207,7 @@ function easy_frames_frame_effect(&$image, $action = array()) {
          * Actual effect applying starts here
          */
     } else if (isset($action['force_run']) && $action['force_run'] == true) {
+        $tolerance = $action['downscale_tolerance'];
         $frame_thickness = $action['frame_thickness'] / 100;
         $left = round($action['frame_left']);
         $top = round($action['frame_top']);
@@ -236,18 +245,20 @@ function easy_frames_frame_effect(&$image, $action = array()) {
         /**
          * Now we resize image so it will fit inside frame minus some tolerance
          */
-        $data = array(
-            'relative' => array(
-                'leftdiff' => $left/$scale_factor - $tolerance,
-                'rightdiff' => $right/$scale_factor - $tolerance,
-                'topdiff' => $top/$scale_factor - $tolerance,
-                'bottomdiff' => $bottom/$scale_factor - $tolerance
-            )
-        );
-        $data['RGB']['HEX'] = ''; // no color for transparency
-        $data['under'] = true;
-        $data['exact']['width'] = $data['exact']['height'] = $data['exact']['xpos'] = $data['exact']['ypos'] = '';
-        canvasactions_definecanvas_effect($image, $data);
+        if($action['downscale_image'] == true) {
+            $data = array(
+                'relative' => array(
+                    'leftdiff' => $left/$scale_factor - $tolerance,
+                    'rightdiff' => $right/$scale_factor - $tolerance,
+                    'topdiff' => $top/$scale_factor - $tolerance,
+                    'bottomdiff' => $bottom/$scale_factor - $tolerance
+                )
+            );
+            $data['RGB']['HEX'] = ''; // no color for transparency
+            $data['under'] = true;
+            $data['exact']['width'] = $data['exact']['height'] = $data['exact']['xpos'] = $data['exact']['ypos'] = '';
+            canvasactions_definecanvas_effect($image, $data);
+        }
 
         /**
          * Resizing frame itself

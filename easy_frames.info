@@ -1,5 +1,8 @@
 name = Easy Frames
 description = Super easy imagecache action to create photo frames
 core = 7.x
+dependencies[] = image
+dependencies[] = imagecache_actions
+dependencies[] = libraries
 files[] = easy_frames.module
 files[] = inc/common.inc
